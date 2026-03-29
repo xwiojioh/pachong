@@ -1,0 +1,1 @@
+Get-Service | Where-Object { $_.DisplayName -like "*MySQL*" -or $_.Name -like "*mysql*" }
