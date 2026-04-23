@@ -3,8 +3,13 @@ import pymysql
 from pymysql.cursors import DictCursor
 from dotenv import load_dotenv
 import os
+import threading
 
-load_dotenv()
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.abspath(os.path.join(CURRENT_DIR, '..', '..'))
+ENV_FILE = os.path.join(BACKEND_DIR, '.env')
+
+load_dotenv(ENV_FILE)
 
 
 class DBManager:
@@ -13,12 +18,13 @@ class DBManager:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._connection = None
+            cls._instance._local = threading.local()
         return cls._instance
     
     def get_connection(self):
-        if self._connection is None or not self._connection.open:
-            self._connection = pymysql.connect(
+        connection = getattr(self._local, 'connection', None)
+        if connection is None or not connection.open:
+            connection = pymysql.connect(
                 host=os.getenv('DB_HOST', 'localhost'),
                 port=int(os.getenv('DB_PORT', 3306)),
                 user=os.getenv('DB_USER', 'root'),
@@ -27,7 +33,10 @@ class DBManager:
                 charset='utf8mb4',
                 cursorclass=DictCursor
             )
-        return self._connection
+            self._local.connection = connection
+        else:
+            connection.ping(reconnect=True)
+        return connection
     
     def execute_query(self, query, params=None):
         conn = self.get_connection()
@@ -53,8 +62,10 @@ class DBManager:
             return cursor.fetchone()
     
     def close(self):
-        if self._connection and self._connection.open:
-            self._connection.close()
+        connection = getattr(self._local, 'connection', None)
+        if connection and connection.open:
+            connection.close()
+            self._local.connection = None
 
 
 db_manager = DBManager()

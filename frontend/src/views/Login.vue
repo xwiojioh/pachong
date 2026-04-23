@@ -137,10 +137,11 @@ const handleRegister = async () => {
   align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
 }
 
 .login-card {
-  width: 400px;
+  width: min(420px, calc(100vw - 32px));
 }
 
 .card-header {

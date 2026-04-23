@@ -12,16 +12,23 @@ if sys.platform == 'win32':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 load_dotenv()
+from app.utils.schema import ensure_database_schema
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key-change-this')
 app.config['JSON_AS_ASCII'] = False
 CORS(app, supports_credentials=True)
 
+ensure_database_schema()
+
 from app.routes.auth import auth_bp
+from app.routes.analytics import analytics_bp
+from app.routes.data import data_bp
 from app.routes.tasks import tasks_bp
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(analytics_bp)
+app.register_blueprint(data_bp)
 app.register_blueprint(tasks_bp)
 
 

@@ -20,7 +20,13 @@ CREATE TABLE IF NOT EXISTS tasks (
     name VARCHAR(100) NOT NULL,
     url VARCHAR(500) NOT NULL,
     selector_config JSON,
+    request_config JSON,
     status VARCHAR(20) DEFAULT 'pending',
+    progress INT DEFAULT 0,
+    stop_requested TINYINT(1) DEFAULT 0,
+    last_error TEXT NULL,
+    last_run_at DATETIME NULL,
+    finished_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),
@@ -38,4 +44,14 @@ CREATE TABLE IF NOT EXISTS data (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_task_id (task_id),
     INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS task_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    level VARCHAR(20) DEFAULT 'info',
+    message TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_task_logs_task_id (task_id),
+    INDEX idx_task_logs_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

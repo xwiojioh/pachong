@@ -1,130 +1,117 @@
-
 # Python爬虫系统 - 后端
 
-## 项目结构
+## 功能概览
 
-```
+- 用户注册、登录、登出、会话校验
+- 爬虫任务创建、列表、详情、运行、停止、删除
+- 支持 `GET/POST` 请求
+- 支持 Playwright 动态渲染抓取
+- 支持自定义请求头、Cookie、请求体
+- 支持 `CSS/XPath` 提取规则
+- 支持任务进度、运行日志、失败原因记录
+- 抓取数据分页查询、关键词搜索、删除
+- 支持 `CSV/Excel` 导出
+- 提供统计分析接口，供前端图表页使用
+
+## 目录结构
+
+```text
 backend/
 ├── app/
-│   ├── __init__.py
 │   ├── models/          # 数据模型
-│   │   ├── user.py
-│   │   └── task.py
-│   ├── routes/          # API路由
-│   │   ├── auth.py      # 用户认证
-│   │   └── tasks.py     # 任务管理
-│   ├── spider/          # 爬虫模块
-│   │   └── crawler.py
-│   └── utils/           # 工具类
-│       └── db.py        # 数据库管理
-├── app.py                # Flask主应用
-├── requirements.txt      # 依赖包
-├── .env                  # 环境配置
-├── init_db.sql           # 数据库初始化脚本
-└── logs/                 # 日志目录
+│   ├── routes/          # API 路由
+│   ├── services/        # 任务执行服务
+│   ├── spider/          # 爬虫执行器
+│   └── utils/           # 数据库、鉴权、导出、建表工具
+├── app.py               # Flask 入口
+├── init_db.sql          # MySQL 初始化脚本
+├── requirements.txt     # Python 依赖
+└── .env.example         # 环境变量示例
 ```
 
-## 安装步骤
+## 环境要求
 
-### 1. 安装依赖
+- Python 3.9+
+- MySQL 8.0+
+
+## 安装与启动
+
+### 1. 创建虚拟环境并安装依赖
 
 ```bash
-cd backend
-pip install -r requirements.txt
+python3 -m venv .venv
+./.venv/bin/pip install -r backend/requirements.txt
+./.venv/bin/playwright install chromium
 ```
 
-### 2. 配置数据库
+### 2. 配置环境变量
 
-1. 确保MySQL已安装并运行
-2. 修改`.env`文件中的数据库配置：
-   ```
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=your_password
-   DB_NAME=crawler_system
-   ```
+复制 `backend/.env.example` 为 `backend/.env`，按实际 MySQL 环境修改：
+
+```env
+SECRET_KEY=change-me
+SERVER_PORT=5000
+FLASK_DEBUG=True
+
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=crawler_system
+```
 
 ### 3. 初始化数据库
 
-使用MySQL客户端执行`init_db.sql`脚本：
+方式一：执行 SQL 脚本
 
 ```bash
-mysql -u root -p < init_db.sql
+mysql -u root -p < backend/init_db.sql
 ```
 
-或者在MySQL命令行中：
+方式二：运行仓库根目录脚本
 
-```sql
-source d:/爬虫开发/backend/init_db.sql
+```bash
+./.venv/bin/python create_db.py
 ```
+
+应用启动时也会尝试自动补齐缺失的表和字段。
 
 ### 4. 启动服务
 
 ```bash
-python app.py
+cd backend
+../.venv/bin/python app.py
 ```
 
-服务将在 `http://localhost:5000` 启动
+服务默认运行在 `http://localhost:5000`
 
-## API文档
+## 主要接口
 
-### 认证接口
+### 认证
 
-#### 注册
-- POST `/api/auth/register`
-- Body: `{"username": "test", "password": "123456"}`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
 
-#### 登录
-- POST `/api/auth/login`
-- Body: `{"username": "test", "password": "123456"}`
+### 任务管理
 
-#### 登出
-- POST `/api/auth/logout`
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `GET /api/tasks/{task_id}`
+- `POST /api/tasks/{task_id}/run`
+- `POST /api/tasks/{task_id}/stop`
+- `DELETE /api/tasks/{task_id}`
+- `GET /api/tasks/{task_id}/data`
+- `GET /api/tasks/{task_id}/logs`
+- `GET /api/tasks/{task_id}/export?format=excel|csv`
 
-#### 获取当前用户
-- GET `/api/auth/me`
+### 数据管理
 
-### 任务管理接口
+- `GET /api/data`
+- `DELETE /api/data/{data_id}`
+- `GET /api/data/export?format=excel|csv`
 
-#### 获取任务列表
-- GET `/api/tasks?page=1&page_size=10`
+### 可视化统计
 
-#### 创建任务
-- POST `/api/tasks`
-- Body:
-  ```json
-  {
-    "name": "测试任务",
-    "url": "https://example.com",
-    "selector_config": {
-      "list_selector": ".item",
-      "fields": {
-        "title": {"type": "text", "selector": "h3"},
-        "url": {"type": "attr", "selector": "a", "attr": "href"}
-      }
-    }
-  }
-  ```
-
-#### 获取任务详情
-- GET `/api/tasks/{task_id}`
-
-#### 运行任务
-- POST `/api/tasks/{task_id}/run`
-
-#### 删除任务
-- DELETE `/api/tasks/{task_id}`
-
-#### 获取任务数据
-- GET `/api/tasks/{task_id}/data?page=1&page_size=20`
-
-#### 导出数据
-- GET `/api/tasks/{task_id}/export`
-
-## 技术栈
-
-- Flask 2.3.3
-- PyMySQL
-- requests + BeautifulSoup4
-- pandas + openpyxl
+- `GET /api/analytics/overview`

@@ -1,6 +1,19 @@
 
 import request from '@/utils/request'
 
+const buildDownloadUrl = (path, params = {}) => {
+  const searchParams = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.append(key, value)
+    }
+  })
+
+  const query = searchParams.toString()
+  window.open(`/api${path}${query ? `?${query}` : ''}`, '_blank')
+}
+
 export const authApi = {
   login(data) {
     return request({
@@ -38,6 +51,13 @@ export const taskApi = {
       params
     })
   },
+  detectTask(data) {
+    return request({
+      url: '/tasks/detect',
+      method: 'post',
+      data
+    })
+  },
   createTask(data) {
     return request({
       url: '/tasks',
@@ -57,6 +77,12 @@ export const taskApi = {
       method: 'post'
     })
   },
+  stopTask(id) {
+    return request({
+      url: `/tasks/${id}/stop`,
+      method: 'post'
+    })
+  },
   deleteTask(id) {
     return request({
       url: `/tasks/${id}`,
@@ -70,7 +96,42 @@ export const taskApi = {
       params
     })
   },
-  exportData(id) {
-    window.open(`/api/tasks/${id}/export`, '_blank')
+  getTaskLogs(id, params) {
+    return request({
+      url: `/tasks/${id}/logs`,
+      method: 'get',
+      params
+    })
+  },
+  exportData(id, params = {}) {
+    buildDownloadUrl(`/tasks/${id}/export`, params)
+  }
+}
+
+export const dataApi = {
+  getDataList(params) {
+    return request({
+      url: '/data',
+      method: 'get',
+      params
+    })
+  },
+  deleteData(id) {
+    return request({
+      url: `/data/${id}`,
+      method: 'delete'
+    })
+  },
+  exportData(params = {}) {
+    buildDownloadUrl('/data/export', params)
+  }
+}
+
+export const analyticsApi = {
+  getOverview() {
+    return request({
+      url: '/analytics/overview',
+      method: 'get'
+    })
   }
 }

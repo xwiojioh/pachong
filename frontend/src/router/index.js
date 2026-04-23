@@ -24,6 +24,11 @@ const routes = [
         component: () => import('@/views/TaskDetail.vue')
       },
       {
+        path: 'data',
+        name: 'DataManagement',
+        component: () => import('@/views/DataManagement.vue')
+      },
+      {
         path: 'visualization',
         name: 'Visualization',
         component: () => import('@/views/Visualization.vue')
