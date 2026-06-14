@@ -63,6 +63,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import {
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   TitleComponent,
@@ -74,7 +75,7 @@ import * as echarts from 'echarts/core'
 import { analyticsApi } from '@/api'
 import { getTaskStatusText } from '@/constants/taskStatus'
 
-use([TitleComponent, TooltipComponent, LegendComponent, GridComponent, PieChart, BarChart, LineChart, CanvasRenderer])
+use([TitleComponent, TooltipComponent, LegendComponent, GridComponent, GraphicComponent, PieChart, BarChart, LineChart, CanvasRenderer])
 
 const summary = ref({})
 const pieChartRef = ref(null)
@@ -101,28 +102,80 @@ const renderCharts = (data) => {
   const statusDistribution = data.status_distribution || []
   const taskDataCounts = data.task_data_counts || []
   const dailyCounts = data.daily_counts || []
-  const chartTextColor = '#526173'
-  const chartAxisColor = '#d9e2ec'
+  const statusTotal = statusDistribution.reduce((sum, item) => sum + Number(item.count || 0), 0)
+  const chartTextColor = '#667085'
+  const chartAxisColor = '#eef2f7'
+  const tooltipFormatter = (name, value, unit = '') => `
+    <div style="min-width: 132px;">
+      <div style="color:#667085;font-size:12px;margin-bottom:6px;">${name}</div>
+      <div style="color:#1f2937;font-size:20px;font-weight:800;line-height:1;">${value}${unit}</div>
+    </div>
+  `
 
   pieChart?.setOption({
-    color: ['#6b778c', '#d58a1f', '#8a96a8', '#2f9461', '#c2413a'],
-    tooltip: { trigger: 'item' },
+    color: ['#a8b2c1', '#d6a75f', '#c5ccd6', '#80bd73', '#cf7b74'],
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      padding: [12, 14],
+      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);',
+      formatter: (params) => tooltipFormatter(params.name, params.value, ' 个')
+    },
     legend: {
       bottom: 0,
-      itemWidth: 9,
-      itemHeight: 9,
-      textStyle: { color: chartTextColor }
+      itemWidth: 8,
+      itemHeight: 8,
+      itemGap: 16,
+      textStyle: {
+        color: chartTextColor,
+        fontSize: 12,
+        fontWeight: 600
+      }
     },
+    graphic: [
+      {
+        type: 'text',
+        left: 'center',
+        top: '39%',
+        style: {
+          text: `${statusTotal}`,
+          fill: '#1f2937',
+          fontSize: 32,
+          fontWeight: 800,
+          fontFamily: 'Inter, Roboto, Helvetica, Arial, sans-serif',
+          textAlign: 'center'
+        }
+      },
+      {
+        type: 'text',
+        left: 'center',
+        top: '51%',
+        style: {
+          text: '任务总数',
+          fill: '#909399',
+          fontSize: 12,
+          fontWeight: 600,
+          textAlign: 'center'
+        }
+      }
+    ],
     series: [
       {
         name: '任务状态',
         type: 'pie',
-        radius: ['40%', '68%'],
+        radius: ['55%', '70%'],
         center: ['50%', '46%'],
         avoidLabelOverlap: true,
+        label: { show: false },
+        labelLine: { show: false },
         itemStyle: {
           borderColor: '#fff',
-          borderWidth: 3
+          borderWidth: 4
+        },
+        emphasis: {
+          scale: true,
+          scaleSize: 4
         },
         data: statusDistribution.map(item => ({
           value: item.count,
@@ -133,9 +186,22 @@ const renderCharts = (data) => {
   })
 
   barChart?.setOption({
-    grid: { left: 44, right: 18, top: 26, bottom: 58 },
-    color: ['#1e6f7a'],
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 44, right: 18, top: 28, bottom: 58 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow',
+        shadowStyle: { color: 'rgba(37, 111, 120, 0.06)' }
+      },
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      padding: [12, 14],
+      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);',
+      formatter: (params) => {
+        const item = params[0] || {}
+        return tooltipFormatter(item.name, item.value || 0, ' 条')
+      }
+    },
     xAxis: {
       type: 'category',
       data: taskDataCounts.map(item => item.name),
@@ -146,18 +212,26 @@ const renderCharts = (data) => {
         overflow: 'truncate'
       },
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: chartAxisColor } }
+      axisLine: { show: false }
     },
     yAxis: {
       type: 'value',
       axisLabel: { color: chartTextColor },
+      axisLine: { show: false },
+      axisTick: { show: false },
       splitLine: { lineStyle: { color: chartAxisColor, type: 'dashed' } }
     },
     series: [
       {
         type: 'bar',
         data: taskDataCounts.map(item => item.data_count),
-        itemStyle: { borderRadius: [6, 6, 0, 0] },
+        itemStyle: {
+          borderRadius: [8, 8, 0, 0],
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#4aa3ad' },
+            { offset: 1, color: '#256f78' }
+          ])
+        },
         barMaxWidth: 48
       }
     ]
@@ -165,26 +239,43 @@ const renderCharts = (data) => {
 
   lineChart?.setOption({
     grid: { left: 44, right: 24, top: 26, bottom: 42 },
-    color: ['#2f9461'],
-    tooltip: { trigger: 'axis' },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'line',
+        lineStyle: { color: '#cbd5e1', width: 1, type: 'dashed' }
+      },
+      backgroundColor: '#ffffff',
+      borderWidth: 0,
+      padding: [12, 14],
+      extraCssText: 'border-radius: 12px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);',
+      formatter: (params) => {
+        const item = params[0] || {}
+        return tooltipFormatter(item.name, item.value || 0, ' 条')
+      }
+    },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: dailyCounts.map(item => item.date),
       axisLabel: { color: chartTextColor },
       axisTick: { show: false },
-      axisLine: { lineStyle: { color: chartAxisColor } }
+      axisLine: { show: false }
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
       axisLabel: { color: chartTextColor },
+      axisLine: { show: false },
+      axisTick: { show: false },
       splitLine: { lineStyle: { color: chartAxisColor, type: 'dashed' } }
     },
     series: [
       {
         type: 'line',
         smooth: true,
+        showSymbol: false,
+        symbolSize: 7,
         areaStyle: {
           color: {
             type: 'linear',
@@ -193,13 +284,20 @@ const renderCharts = (data) => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(47, 148, 97, 0.22)' },
-              { offset: 1, color: 'rgba(47, 148, 97, 0)' }
+              { offset: 0, color: 'rgba(82, 155, 46, 0.18)' },
+              { offset: 1, color: 'rgba(82, 155, 46, 0)' }
             ]
           }
         },
         data: dailyCounts.map(item => item.count),
-        lineStyle: { width: 3 }
+        itemStyle: { color: '#529b2e' },
+        lineStyle: {
+          width: 3,
+          color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+            { offset: 0, color: '#80bd73' },
+            { offset: 1, color: '#529b2e' }
+          ])
+        }
       }
     ]
   })
@@ -239,7 +337,7 @@ onUnmounted(() => {
 .visualization-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .page-heading {
@@ -270,20 +368,20 @@ onUnmounted(() => {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .stat-card,
 .chart-card {
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .stat-card {
-  min-height: 124px;
-  padding: 18px;
+  min-height: 126px;
+  padding: 22px;
   position: relative;
   overflow: hidden;
 }
@@ -309,24 +407,25 @@ onUnmounted(() => {
 }
 
 .chart-card :deep(.el-card__header) {
-  padding: 16px 18px;
-  border-bottom-color: #edf2f7;
+  padding: 18px 22px;
+  border-bottom-color: #f0f3f8;
 }
 
 .chart-card :deep(.el-card__body) {
-  padding: 16px 18px 18px;
+  padding: 18px 22px 22px;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #6b7280;
+  color: #909399;
 }
 
 .stat-value {
   margin-top: 10px;
-  font-size: 30px;
-  font-weight: 700;
-  color: #111827;
+  font-family: Inter, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: #1f2937;
   line-height: 1;
 }
 

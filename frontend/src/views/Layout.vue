@@ -146,15 +146,13 @@ onUnmounted(() => {
 <style scoped>
 .layout-container {
   height: 100vh;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(238, 243, 246, 0.92)),
-    #eef3f6;
+  background: #f8fafc;
 }
 
 .layout-aside {
   background: #17212b;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 18px 0 44px rgba(20, 40, 60, 0.16);
+  box-shadow: 8px 0 24px rgba(15, 23, 42, 0.08);
 }
 
 .logo {
@@ -201,7 +199,7 @@ onUnmounted(() => {
 .side-menu :deep(.el-menu-item) {
   height: 46px;
   margin-bottom: 6px;
-  border-radius: 8px;
+  border-radius: 12px;
   color: rgba(255, 255, 255, 0.72);
   font-weight: 700;
 }
@@ -221,8 +219,8 @@ onUnmounted(() => {
 }
 
 .el-header {
-  background: rgba(255, 255, 255, 0.86);
-  border-bottom: 1px solid #dfe7ef;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid #edf1f6;
   display: flex;
   align-items: center;
   padding: 0 24px;
@@ -272,7 +270,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 7px 10px;
-  border: 1px solid #dfe7ef;
+  border: 1px solid #edf1f6;
   border-radius: 999px;
   background: #f8fafc;
   color: #344054;
@@ -282,7 +280,7 @@ onUnmounted(() => {
 
 .el-main {
   background: transparent;
-  padding: 24px;
+  padding: 28px;
   overflow-x: hidden;
 }
 

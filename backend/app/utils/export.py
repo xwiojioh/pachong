@@ -1,5 +1,6 @@
 import csv
 from io import BytesIO, StringIO
+from urllib.parse import quote
 
 import pandas as pd
 from flask import make_response
@@ -34,6 +35,7 @@ def flatten_export_rows(rows):
 
 def build_export_response(rows, export_format, filename_prefix='crawler_data'):
     export_rows = flatten_export_rows(rows)
+    content_disposition = build_content_disposition(filename_prefix, 'csv' if export_format == 'csv' else 'xlsx')
 
     if export_format == 'csv':
         output = StringIO()
@@ -44,7 +46,7 @@ def build_export_response(rows, export_format, filename_prefix='crawler_data'):
             writer.writerows(export_rows)
         response = make_response(output.getvalue().encode('utf-8-sig'))
         response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-        response.headers['Content-Disposition'] = f'attachment; filename={filename_prefix}.csv'
+        response.headers['Content-Disposition'] = content_disposition
         return response
 
     dataframe = pd.DataFrame(export_rows)
@@ -54,5 +56,18 @@ def build_export_response(rows, export_format, filename_prefix='crawler_data'):
     output.seek(0)
     response = make_response(output.getvalue())
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    response.headers['Content-Disposition'] = f'attachment; filename={filename_prefix}.xlsx'
+    response.headers['Content-Disposition'] = content_disposition
     return response
+
+
+def build_content_disposition(filename_prefix, extension):
+    safe_prefix = str(filename_prefix or 'crawler_data').strip() or 'crawler_data'
+    ascii_name = ''.join(
+        char if char.isascii() and char not in {'"', '\\', '/', '\r', '\n', ';'} else '_'
+        for char in safe_prefix
+    ).strip('._ ')
+    if not ascii_name:
+        ascii_name = 'crawler_data'
+
+    encoded_name = quote(f'{safe_prefix}.{extension}')
+    return f"attachment; filename=\"{ascii_name}.{extension}\"; filename*=UTF-8''{encoded_name}"

@@ -136,7 +136,7 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #eef3f6;
+  background: #f8fafc;
   padding: 16px;
 }
 
@@ -146,7 +146,7 @@ const handleRegister = async () => {
   margin: 0 auto 14px;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #dcefed;
   color: #175964;
   font-weight: 900;
@@ -155,9 +155,9 @@ const handleRegister = async () => {
 
 .login-card {
   width: min(420px, calc(100vw - 32px));
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.08);
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .login-card :deep(.el-card__body) {

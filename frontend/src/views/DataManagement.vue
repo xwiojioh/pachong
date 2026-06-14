@@ -7,7 +7,7 @@
         <p>检索、筛选和导出已经入库的网页采集结果。</p>
       </div>
       <el-dropdown @command="handleExport">
-        <el-button type="primary" size="large">
+        <el-button plain size="large">
           导出数据
           <el-icon class="el-icon--right"><ArrowDown /></el-icon>
         </el-button>
@@ -200,7 +200,7 @@ onMounted(() => {
 .data-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .page-heading {
@@ -235,16 +235,16 @@ onMounted(() => {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .summary-card {
-  min-height: 118px;
-  padding: 18px;
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
+  min-height: 126px;
+  padding: 22px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 16px 36px rgba(20, 40, 60, 0.06);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -266,14 +266,15 @@ onMounted(() => {
 }
 
 .summary-label {
-  color: #667085;
+  color: #909399;
   font-size: 13px;
 }
 
 .summary-value {
-  margin-top: 8px;
-  color: #111827;
-  font-size: 30px;
+  margin-top: 10px;
+  color: #1f2937;
+  font-family: Inter, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 34px;
   font-weight: 800;
   line-height: 1;
 }
@@ -285,13 +286,13 @@ onMounted(() => {
 }
 
 .page-card {
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .table-card :deep(.el-card__body) {
-  padding: 18px;
+  padding: 22px;
 }
 
 .toolbar {
@@ -299,10 +300,10 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
-  padding: 12px;
-  border: 1px solid #e6edf4;
-  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
@@ -321,9 +322,10 @@ onMounted(() => {
 }
 
 .data-table :deep(.el-table__header th) {
-  background: #f7fafc;
-  color: #506070;
-  font-weight: 700;
+  background: #f6f8fb;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .pagination {

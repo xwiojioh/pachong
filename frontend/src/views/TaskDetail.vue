@@ -10,10 +10,10 @@
         <h2 class="page-title">{{ task?.name || '任务详情' }}</h2>
       </div>
       <div class="header-actions">
-        <el-button type="success" :disabled="task?.status === 'running'" @click="runTask">运行任务</el-button>
-        <el-button type="warning" :disabled="task?.status !== 'running'" @click="stopTask">停止任务</el-button>
+        <el-button plain :disabled="task?.status === 'running'" @click="runTask">运行任务</el-button>
+        <el-button plain :disabled="task?.status !== 'running'" @click="stopTask">停止任务</el-button>
         <el-dropdown @command="handleExport">
-          <el-button type="primary">
+          <el-button plain>
             导出数据
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </el-button>
@@ -315,7 +315,7 @@ onUnmounted(() => {
 .task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .detail-header {
@@ -356,13 +356,27 @@ onUnmounted(() => {
 
 .summary-card,
 .content-card {
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .summary-card :deep(.el-card__body) {
-  padding: 20px;
+  padding: 22px;
+}
+
+.summary-card :deep(.el-descriptions__cell) {
+  border-color: #eef2f7;
+}
+
+.summary-card :deep(.el-descriptions__label) {
+  color: #667085;
+  font-weight: 700;
+  background: #f8fafc;
+}
+
+.summary-card :deep(.el-descriptions__content) {
+  color: #344054;
 }
 
 .error-alert {
@@ -372,8 +386,8 @@ onUnmounted(() => {
 .progress-wrapper {
   margin-top: 20px;
   padding: 16px;
-  border: 1px solid #e6edf4;
-  border-radius: 8px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
@@ -385,27 +399,28 @@ onUnmounted(() => {
 
 .status-tag {
   border: 0;
+  border-radius: 999px;
   font-weight: 700;
 }
 
 .status-tag.is-success {
-  background: #e9f8ef;
-  color: #1f7a4d;
+  background: #e1f3d8;
+  color: #529b2e;
 }
 
 .status-tag.is-warning {
-  background: #fff4dd;
-  color: #9a5b10;
+  background: #f8edda;
+  color: #a66b1f;
 }
 
 .status-tag.is-danger {
-  background: #ffecec;
-  color: #b42318;
+  background: #fbe5e3;
+  color: #b2524b;
 }
 
 .status-tag.is-neutral {
-  background: #edf2f7;
-  color: #526173;
+  background: #eef2f7;
+  color: #667085;
 }
 
 .card-header {
@@ -418,9 +433,10 @@ onUnmounted(() => {
 }
 
 .content-card :deep(.el-table__header th) {
-  background: #f7fafc;
-  color: #506070;
-  font-weight: 700;
+  background: #f6f8fb;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .card-actions {

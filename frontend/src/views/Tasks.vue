@@ -73,21 +73,22 @@
         </el-table-column>
         <el-table-column prop="data_count" label="数据量" width="100" />
         <el-table-column prop="updated_at" label="更新时间" width="180" />
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="goToDetail(row.id)">查看</el-button>
-            <el-button type="success" size="small" :disabled="row.status === 'running'" @click="runTask(row.id)">
+            <el-button type="primary" link size="small" @click="goToDetail(row.id)">查看</el-button>
+            <el-button type="success" link size="small" :disabled="row.status === 'running'" @click="runTask(row.id)">
               运行
             </el-button>
             <el-button
               type="warning"
+              link
               size="small"
               :disabled="row.status !== 'running'"
               @click="stopTask(row.id)"
             >
               停止
             </el-button>
-            <el-button type="danger" size="small" @click="deleteTask(row.id)">删除</el-button>
+            <el-button type="danger" link size="small" @click="deleteTask(row.id)">删除</el-button>
           </template>
         </el-table-column>
         <template #empty>
@@ -1091,7 +1092,7 @@ onUnmounted(() => {
 .tasks-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .page-heading {
@@ -1126,16 +1127,16 @@ onUnmounted(() => {
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .summary-card {
-  min-height: 118px;
-  padding: 18px;
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
+  min-height: 126px;
+  padding: 22px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 16px 36px rgba(20, 40, 60, 0.06);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
   position: relative;
   overflow: hidden;
 }
@@ -1161,14 +1162,15 @@ onUnmounted(() => {
 }
 
 .summary-label {
-  color: #667085;
+  color: #909399;
   font-size: 13px;
 }
 
 .summary-value {
-  margin-top: 8px;
-  color: #111827;
-  font-size: 30px;
+  margin-top: 10px;
+  color: #1f2937;
+  font-family: Inter, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 34px;
   font-weight: 800;
   line-height: 1;
 }
@@ -1180,13 +1182,13 @@ onUnmounted(() => {
 }
 
 .page-card {
-  border: 1px solid #dfe7ef;
-  border-radius: 8px;
-  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
 }
 
 .table-card :deep(.el-card__body) {
-  padding: 18px;
+  padding: 22px;
 }
 
 .toolbar {
@@ -1194,10 +1196,10 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
-  padding: 12px;
-  border: 1px solid #e6edf4;
-  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
@@ -1220,9 +1222,10 @@ onUnmounted(() => {
 }
 
 .task-table :deep(.el-table__header th) {
-  background: #f7fafc;
-  color: #506070;
-  font-weight: 700;
+  background: #f6f8fb;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .task-table :deep(.el-table__row) {
@@ -1231,27 +1234,28 @@ onUnmounted(() => {
 
 .status-tag {
   border: 0;
+  border-radius: 999px;
   font-weight: 700;
 }
 
 .status-tag.is-success {
-  background: #e9f8ef;
-  color: #1f7a4d;
+  background: #e1f3d8;
+  color: #529b2e;
 }
 
 .status-tag.is-warning {
-  background: #fff4dd;
-  color: #9a5b10;
+  background: #f8edda;
+  color: #a66b1f;
 }
 
 .status-tag.is-danger {
-  background: #ffecec;
-  color: #b42318;
+  background: #fbe5e3;
+  color: #b2524b;
 }
 
 .status-tag.is-neutral {
-  background: #edf2f7;
-  color: #526173;
+  background: #eef2f7;
+  color: #667085;
 }
 
 .pagination {
@@ -1284,7 +1288,7 @@ onUnmounted(() => {
   padding: 16px;
   border-radius: 12px;
   background: #f8fafc;
-  border: 1px solid #dbeafe;
+  border: 1px solid #edf1f6;
 }
 
 .detect-header {
@@ -1357,10 +1361,10 @@ onUnmounted(() => {
 
 .detail-toggle-row {
   margin-top: 22px;
-  padding: 14px 16px;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  background: #f8fbff;
+  padding: 16px;
+  border: 1px solid #edf1f6;
+  border-radius: 12px;
+  background: #f8fafc;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1417,7 +1421,7 @@ onUnmounted(() => {
   color: #9ca3af;
   background: #f9fafb;
   border: 1px dashed #d1d5db;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 @media (max-width: 1024px) {
