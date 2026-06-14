@@ -1,6 +1,26 @@
 <template>
   <div class="tasks-page">
-    <el-card class="page-card">
+    <div class="page-heading">
+      <div>
+        <div class="page-eyebrow">Crawler Console</div>
+        <h1>采集任务工作台</h1>
+        <p>统一创建、运行和监控网页采集任务，快速查看进度与产出。</p>
+      </div>
+      <el-button type="primary" size="large" @click="openCreateDialog">
+        <el-icon><Plus /></el-icon>
+        新建任务
+      </el-button>
+    </div>
+
+    <div class="summary-grid">
+      <div v-for="item in summaryCards" :key="item.label" class="summary-card" :class="`is-${item.tone}`">
+        <div class="summary-label">{{ item.label }}</div>
+        <div class="summary-value">{{ item.value }}</div>
+        <div class="summary-hint">{{ item.hint }}</div>
+      </div>
+    </div>
+
+    <el-card class="page-card table-card">
       <div class="toolbar">
         <div class="toolbar-left">
           <el-input
@@ -24,13 +44,9 @@
           <el-button @click="handleSearch">筛选</el-button>
           <el-button @click="resetFilters">重置</el-button>
         </div>
-        <el-button type="primary" @click="openCreateDialog">
-          <el-icon><Plus /></el-icon>
-          新建任务
-        </el-button>
       </div>
 
-      <el-table :data="tasks" v-loading="loading" stripe class="task-table">
+      <el-table :data="tasks" v-loading="loading" class="task-table">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="任务名称" min-width="160" />
         <el-table-column label="请求方式" width="110">
@@ -41,14 +57,16 @@
         <el-table-column prop="url" label="目标 URL" min-width="240" show-overflow-tooltip />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row)">{{ getStatusText(row) }}</el-tag>
+            <el-tag class="status-tag" :class="`is-${getTaskStatusTone(row)}`" :type="getTaskStatusType(row)">
+              {{ getTaskStatusText(row) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="进度" min-width="160">
           <template #default="{ row }">
             <el-progress
               :percentage="row.progress || 0"
-              :status="getProgressStatus(row)"
+              :status="getTaskProgressStatus(row)"
               :stroke-width="16"
             />
           </template>
@@ -72,6 +90,13 @@
             <el-button type="danger" size="small" @click="deleteTask(row.id)">删除</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="empty-state">
+            <div class="empty-title">暂无采集任务</div>
+            <div class="empty-text">创建第一个任务后，运行状态、进度和数据量会在这里集中展示。</div>
+            <el-button type="primary" @click="openCreateDialog">新建任务</el-button>
+          </div>
+        </template>
       </el-table>
 
       <el-pagination
@@ -446,6 +471,12 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { taskApi } from '@/api'
+import {
+  getTaskProgressStatus,
+  getTaskStatusText,
+  getTaskStatusTone,
+  getTaskStatusType
+} from '@/constants/taskStatus'
 
 const router = useRouter()
 
@@ -528,6 +559,37 @@ const createRules = {
 }
 
 const hasRunningTask = computed(() => tasks.value.some(item => item.status === 'running'))
+const runningCount = computed(() => tasks.value.filter(item => item.status === 'running').length)
+const completedCount = computed(() => tasks.value.filter(item => item.status === 'completed').length)
+const failedCount = computed(() => tasks.value.filter(item => item.status === 'failed').length)
+const visibleDataCount = computed(() => tasks.value.reduce((sum, item) => sum + Number(item.data_count || 0), 0))
+
+const summaryCards = computed(() => [
+  {
+    label: '任务总数',
+    value: total.value,
+    hint: '当前筛选结果',
+    tone: 'primary'
+  },
+  {
+    label: '运行中',
+    value: runningCount.value,
+    hint: hasRunningTask.value ? '自动刷新中' : '暂无执行任务',
+    tone: 'warning'
+  },
+  {
+    label: '已完成',
+    value: completedCount.value,
+    hint: failedCount.value ? `${failedCount.value} 个失败需处理` : '执行结果稳定',
+    tone: 'success'
+  },
+  {
+    label: '本页数据量',
+    value: visibleDataCount.value,
+    hint: '来自当前页任务',
+    tone: 'neutral'
+  }
+])
 
 const effectiveTaskName = computed(() => {
   return createForm.name.trim() || detectedPreset.value?.name || ''
@@ -561,46 +623,6 @@ const detectionTagText = computed(() => {
   if (detectedPreset.value?.supported === false) return '需手动处理'
   return detectedPreset.value?.matched ? '已识别内置规则' : '使用通用规则'
 })
-
-const getStatusText = (task) => {
-  if (task.status === 'running' && task.stop_requested) return '停止中'
-  const textMap = {
-    pending: '待执行',
-    running: '运行中',
-    stopped: '已停止',
-    completed: '已完成',
-    failed: '失败'
-  }
-  return textMap[task.status] || task.status
-}
-
-const getStatusType = (task) => {
-  if (task.status === 'running' && task.stop_requested) return 'warning'
-  const typeMap = {
-    pending: 'info',
-    running: 'warning',
-    stopped: 'info',
-    completed: 'success',
-    failed: 'danger'
-  }
-  return typeMap[task.status] || 'info'
-}
-
-const getProgressStatus = (task) => {
-  if (task.status === 'completed') return 'success'
-  if (task.status === 'failed') return 'exception'
-  return undefined
-}
-
-const buildPairObject = (pairs) => {
-  const result = {}
-  pairs.forEach(item => {
-    if (item.key && item.value) {
-      result[item.key.trim()] = item.value
-    }
-  })
-  return result
-}
 
 const normalizeBodyForForm = (body) => {
   if (body === null || body === undefined || body === '') {
@@ -1069,18 +1091,114 @@ onUnmounted(() => {
 .tasks-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+}
+
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 4px 2px 2px;
+}
+
+.page-eyebrow {
+  color: #2f6f73;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page-heading h1 {
+  margin: 6px 0 8px;
+  color: #16202a;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.page-heading p {
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  min-height: 118px;
+  padding: 18px;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(20, 40, 60, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #1e6f7a;
+}
+
+.summary-card.is-warning::before {
+  background: #d58a1f;
+}
+
+.summary-card.is-success::before {
+  background: #2f9461;
+}
+
+.summary-card.is-neutral::before {
+  background: #637083;
+}
+
+.summary-label {
+  color: #667085;
+  font-size: 13px;
+}
+
+.summary-value {
+  margin-top: 8px;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-hint {
+  margin-top: 12px;
+  color: #738196;
+  font-size: 12px;
 }
 
 .page-card {
-  border-radius: 16px;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 18px;
 }
 
 .toolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .toolbar-left {
@@ -1101,9 +1219,64 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.task-table :deep(.el-table__header th) {
+  background: #f7fafc;
+  color: #506070;
+  font-weight: 700;
+}
+
+.task-table :deep(.el-table__row) {
+  --el-table-tr-bg-color: #ffffff;
+}
+
+.status-tag {
+  border: 0;
+  font-weight: 700;
+}
+
+.status-tag.is-success {
+  background: #e9f8ef;
+  color: #1f7a4d;
+}
+
+.status-tag.is-warning {
+  background: #fff4dd;
+  color: #9a5b10;
+}
+
+.status-tag.is-danger {
+  background: #ffecec;
+  color: #b42318;
+}
+
+.status-tag.is-neutral {
+  background: #edf2f7;
+  color: #526173;
+}
+
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+}
+
+.empty-title {
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.empty-text {
+  max-width: 360px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .detect-card {
@@ -1248,6 +1421,15 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1024px) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -1268,6 +1450,16 @@ onUnmounted(() => {
   .toolbar-input,
   .toolbar-select {
     width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-heading h1 {
+    font-size: 24px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

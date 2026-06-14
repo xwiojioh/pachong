@@ -1,6 +1,44 @@
 <template>
   <div class="data-page">
-    <el-card class="page-card">
+    <div class="page-heading">
+      <div>
+        <div class="page-eyebrow">Dataset</div>
+        <h1>采集数据管理</h1>
+        <p>检索、筛选和导出已经入库的网页采集结果。</p>
+      </div>
+      <el-dropdown @command="handleExport">
+        <el-button type="primary" size="large">
+          导出数据
+          <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+        </el-button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="excel">导出 Excel</el-dropdown-item>
+            <el-dropdown-item command="csv">导出 CSV</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card is-primary">
+        <div class="summary-label">数据总量</div>
+        <div class="summary-value">{{ total }}</div>
+        <div class="summary-hint">当前筛选结果</div>
+      </div>
+      <div class="summary-card is-success">
+        <div class="summary-label">任务来源</div>
+        <div class="summary-value">{{ taskOptions.length }}</div>
+        <div class="summary-hint">可筛选任务</div>
+      </div>
+      <div class="summary-card is-neutral">
+        <div class="summary-label">本页记录</div>
+        <div class="summary-value">{{ dataList.length }}</div>
+        <div class="summary-hint">当前表格展示</div>
+      </div>
+    </div>
+
+    <el-card class="page-card table-card">
       <div class="toolbar">
         <div class="toolbar-left">
           <el-input
@@ -25,21 +63,9 @@
           <el-button @click="searchData">搜索</el-button>
           <el-button @click="resetFilters">重置</el-button>
         </div>
-        <el-dropdown @command="handleExport">
-          <el-button type="primary">
-            导出数据
-            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-          </el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="excel">导出 Excel</el-dropdown-item>
-              <el-dropdown-item command="csv">导出 CSV</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
       </div>
 
-      <el-table :data="dataList" v-loading="loading" stripe>
+      <el-table :data="dataList" v-loading="loading" class="data-table">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="所属任务" width="160">
           <template #default="{ row }">
@@ -59,6 +85,12 @@
             <el-button type="danger" text @click="deleteDataRow(row.id)">删除</el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <div class="empty-state">
+            <div class="empty-title">暂无数据</div>
+            <div class="empty-text">运行采集任务后，抓取结果会在这里按时间汇总。</div>
+          </div>
+        </template>
       </el-table>
 
       <el-pagination
@@ -168,18 +200,110 @@ onMounted(() => {
 .data-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+}
+
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 4px 2px 2px;
+}
+
+.page-eyebrow {
+  color: #2f6f73;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.page-heading h1 {
+  margin: 6px 0 8px;
+  color: #16202a;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.page-heading p {
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summary-card {
+  min-height: 118px;
+  padding: 18px;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(20, 40, 60, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #1e6f7a;
+}
+
+.summary-card.is-success::before {
+  background: #2f9461;
+}
+
+.summary-card.is-neutral::before {
+  background: #637083;
+}
+
+.summary-label {
+  color: #667085;
+  font-size: 13px;
+}
+
+.summary-value {
+  margin-top: 8px;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-hint {
+  margin-top: 12px;
+  color: #738196;
+  font-size: 12px;
 }
 
 .page-card {
-  border-radius: 16px;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 18px;
 }
 
 .toolbar {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .toolbar-left {
@@ -196,12 +320,47 @@ onMounted(() => {
   width: 180px;
 }
 
+.data-table :deep(.el-table__header th) {
+  background: #f7fafc;
+  color: #506070;
+  font-weight: 700;
+}
+
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
 }
 
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+}
+
+.empty-title {
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.empty-text {
+  max-width: 360px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 @media (max-width: 1024px) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
@@ -210,6 +369,12 @@ onMounted(() => {
   .toolbar-input,
   .toolbar-select {
     width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-heading h1 {
+    font-size: 24px;
   }
 }
 </style>

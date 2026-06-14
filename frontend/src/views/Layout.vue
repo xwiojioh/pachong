@@ -1,15 +1,17 @@
 <template>
   <el-container class="layout-container">
-    <el-aside v-if="!isMobile" width="220px" class="layout-aside">
+    <el-aside v-if="!isMobile" width="248px" class="layout-aside">
       <div class="logo">
-        <h3>爬虫系统</h3>
+        <div class="logo-mark">P</div>
+        <div>
+          <h3>爬虫系统</h3>
+          <span>Data Collector</span>
+        </div>
       </div>
       <el-menu
         :default-active="activeMenu"
         router
-        background-color="#545c64"
-        text-color="#fff"
-        active-text-color="#ffd04b"
+        class="side-menu"
       >
         <el-menu-item index="/tasks">
           <el-icon><Document /></el-icon>
@@ -34,9 +36,13 @@
       class="menu-drawer"
     >
       <div class="logo mobile-logo">
-        <h3>爬虫系统</h3>
+        <div class="logo-mark">P</div>
+        <div>
+          <h3>爬虫系统</h3>
+          <span>Data Collector</span>
+        </div>
       </div>
-      <el-menu :default-active="activeMenu" router @select="drawerVisible = false">
+      <el-menu :default-active="activeMenu" router class="drawer-menu" @select="drawerVisible = false">
         <el-menu-item index="/tasks">
           <el-icon><Document /></el-icon>
           <span>任务管理</span>
@@ -65,8 +71,8 @@
             </div>
           </div>
           <div class="header-user">
-            <span>欢迎，{{ userStore.userInfo?.username }}</span>
-            <el-button type="danger" size="small" @click="handleLogout">退出</el-button>
+            <span class="user-pill">{{ userStore.userInfo?.username || '用户' }}</span>
+            <el-button plain size="small" @click="handleLogout">退出</el-button>
           </div>
         </div>
       </el-header>
@@ -140,35 +146,88 @@ onUnmounted(() => {
 <style scoped>
 .layout-container {
   height: 100vh;
-  background: #eef3f8;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(238, 243, 246, 0.92)),
+    #eef3f6;
 }
 
 .layout-aside {
-  background-color: #545c64;
+  background: #17212b;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 18px 0 44px rgba(20, 40, 60, 0.16);
 }
 
 .logo {
-  height: 60px;
+  height: 76px;
   display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 0 20px;
   color: #fff;
-  font-size: 18px;
-  font-weight: bold;
-  border-bottom: 1px solid #434a50;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #dcefed;
+  color: #175964;
+  font-weight: 900;
 }
 
 .logo h3 {
   margin: 0;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.logo span {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 12px;
+}
+
+.side-menu {
+  padding: 14px 12px;
+  border-right: 0;
+  background: transparent;
+}
+
+.side-menu :deep(.el-menu-item) {
+  height: 46px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 700;
+}
+
+.side-menu :deep(.el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.side-menu :deep(.el-menu-item.is-active) {
+  background: #dcefed;
+  color: #175964;
+}
+
+.drawer-menu {
+  border-right: 0;
 }
 
 .el-header {
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid #dfe7ef;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 24px;
   height: 72px;
+  backdrop-filter: blur(10px);
 }
 
 .header-content {
@@ -192,13 +251,13 @@ onUnmounted(() => {
 
 .header-title {
   font-size: 18px;
-  font-weight: 700;
-  color: #1f2a37;
+  font-weight: 800;
+  color: #16202a;
 }
 
 .header-subtitle {
   font-size: 12px;
-  color: #6b7280;
+  color: #667085;
 }
 
 .header-user {
@@ -207,9 +266,24 @@ onUnmounted(() => {
   gap: 12px;
 }
 
+.user-pill {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border: 1px solid #dfe7ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .el-main {
-  background-color: #eef3f8;
-  padding: 20px;
+  background: transparent;
+  padding: 24px;
+  overflow-x: hidden;
 }
 
 :deep(.menu-drawer .el-drawer__body) {
@@ -217,7 +291,7 @@ onUnmounted(() => {
 }
 
 .mobile-logo {
-  background: #545c64;
+  background: #17212b;
 }
 
 @media (max-width: 899px) {
@@ -236,6 +310,10 @@ onUnmounted(() => {
 
   .el-main {
     padding: 14px;
+  }
+
+  .user-pill {
+    max-width: 110px;
   }
 }
 </style>

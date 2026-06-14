@@ -2,11 +2,11 @@
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <template #header>
-        <div class="card-header">
-          <span>Python爬虫系统</span>
-        </div>
-      </template>
+      <div class="brand-mark">P</div>
+      <div class="card-header">
+        <span>Python 爬虫系统</span>
+        <small>请登录后继续使用</small>
+      </div>
       
       <el-tabs v-model="activeTab">
         <el-tab-pane label="登录" name="login">
@@ -136,17 +136,64 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #eef3f6;
   padding: 16px;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #dcefed;
+  color: #175964;
+  font-weight: 900;
+  font-size: 20px;
 }
 
 .login-card {
   width: min(420px, calc(100vw - 32px));
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.08);
+}
+
+.login-card :deep(.el-card__body) {
+  padding: 30px 28px 28px;
 }
 
 .card-header {
+  margin-bottom: 18px;
   text-align: center;
-  font-size: 20px;
-  font-weight: bold;
+}
+
+.card-header span {
+  display: block;
+  color: #16202a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.card-header small {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 13px;
+}
+
+:deep(.el-tabs__item) {
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .login-container {
+    padding: 18px;
+  }
+
+  .login-card {
+    width: 100%;
+  }
 }
 </style>

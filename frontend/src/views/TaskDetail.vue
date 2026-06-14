@@ -6,6 +6,7 @@
           <el-icon><ArrowLeft /></el-icon>
           返回任务列表
         </el-button>
+        <div class="page-eyebrow">Task Detail</div>
         <h2 class="page-title">{{ task?.name || '任务详情' }}</h2>
       </div>
       <div class="header-actions">
@@ -40,7 +41,9 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="任务 ID">{{ task?.id }}</el-descriptions-item>
         <el-descriptions-item label="任务状态">
-          <el-tag :type="getStatusType(task)">{{ getStatusText(task) }}</el-tag>
+          <el-tag class="status-tag" :class="`is-${getTaskStatusTone(task)}`" :type="getTaskStatusType(task)">
+            {{ getTaskStatusText(task) }}
+          </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="请求方式">{{ task?.request_config?.method || 'GET' }}</el-descriptions-item>
         <el-descriptions-item label="数据总量">{{ task?.data_count || 0 }}</el-descriptions-item>
@@ -55,7 +58,7 @@
         <div class="progress-title">任务进度</div>
         <el-progress
           :percentage="task?.progress || 0"
-          :status="getProgressStatus(task)"
+          :status="getTaskProgressStatus(task)"
           :stroke-width="18"
         />
       </div>
@@ -154,6 +157,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { dataApi, taskApi } from '@/api'
+import {
+  getTaskProgressStatus,
+  getTaskStatusText,
+  getTaskStatusTone,
+  getTaskStatusType
+} from '@/constants/taskStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -174,39 +183,6 @@ const logTotal = ref(0)
 const refreshTimer = ref(null)
 
 const isRunning = computed(() => task.value?.status === 'running')
-
-const getStatusText = (currentTask) => {
-  if (!currentTask) return '-'
-  if (currentTask.status === 'running' && currentTask.stop_requested) return '停止中'
-  const textMap = {
-    pending: '待执行',
-    running: '运行中',
-    stopped: '已停止',
-    completed: '已完成',
-    failed: '失败'
-  }
-  return textMap[currentTask.status] || currentTask.status
-}
-
-const getStatusType = (currentTask) => {
-  if (!currentTask) return 'info'
-  if (currentTask.status === 'running' && currentTask.stop_requested) return 'warning'
-  const typeMap = {
-    pending: 'info',
-    running: 'warning',
-    stopped: 'info',
-    completed: 'success',
-    failed: 'danger'
-  }
-  return typeMap[currentTask.status] || 'info'
-}
-
-const getProgressStatus = (currentTask) => {
-  if (!currentTask) return undefined
-  if (currentTask.status === 'completed') return 'success'
-  if (currentTask.status === 'failed') return 'exception'
-  return undefined
-}
 
 const getLogType = (level) => {
   const map = {
@@ -339,7 +315,7 @@ onUnmounted(() => {
 .task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .detail-header {
@@ -347,16 +323,29 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
+  padding: 4px 2px 2px;
 }
 
 .back-button {
   padding-left: 0;
+  color: #2f6f73;
+  font-weight: 700;
+}
+
+.page-eyebrow {
+  margin-top: 10px;
+  color: #2f6f73;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .page-title {
   margin: 8px 0 0;
-  font-size: 24px;
-  color: #111827;
+  font-size: 28px;
+  line-height: 1.2;
+  color: #16202a;
 }
 
 .header-actions {
@@ -367,7 +356,13 @@ onUnmounted(() => {
 
 .summary-card,
 .content-card {
-  border-radius: 16px;
+  border: 1px solid #dfe7ef;
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(20, 40, 60, 0.07);
+}
+
+.summary-card :deep(.el-card__body) {
+  padding: 20px;
 }
 
 .error-alert {
@@ -376,6 +371,10 @@ onUnmounted(() => {
 
 .progress-wrapper {
   margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #e6edf4;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .progress-title {
@@ -384,11 +383,44 @@ onUnmounted(() => {
   color: #374151;
 }
 
+.status-tag {
+  border: 0;
+  font-weight: 700;
+}
+
+.status-tag.is-success {
+  background: #e9f8ef;
+  color: #1f7a4d;
+}
+
+.status-tag.is-warning {
+  background: #fff4dd;
+  color: #9a5b10;
+}
+
+.status-tag.is-danger {
+  background: #ffecec;
+  color: #b42318;
+}
+
+.status-tag.is-neutral {
+  background: #edf2f7;
+  color: #526173;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  color: #1f2937;
+  font-weight: 800;
+}
+
+.content-card :deep(.el-table__header th) {
+  background: #f7fafc;
+  color: #506070;
+  font-weight: 700;
 }
 
 .card-actions {
@@ -409,6 +441,10 @@ onUnmounted(() => {
 @media (max-width: 1024px) {
   .detail-header {
     flex-direction: column;
+  }
+
+  .page-title {
+    font-size: 24px;
   }
 
   .card-header,
