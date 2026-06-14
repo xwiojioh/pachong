@@ -22,6 +22,8 @@
   --app-radius: 12px;
   --app-radius-sm: 8px;
   --app-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --app-shadow-3d: 0 18px 36px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --app-shadow-3d-hover: 0 24px 48px rgba(15, 23, 42, 0.11), 0 8px 18px rgba(37, 111, 120, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
 * {
@@ -47,19 +49,26 @@ body {
 .el-button {
   font-weight: 700;
   border-radius: var(--app-radius-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
 }
 
 .el-button:not(.el-button--primary):not(.is-text):not(.is-link) {
   color: #475467;
   border-color: #e5eaf1;
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .el-button:not(.el-button--primary):not(.is-text):not(.is-link):hover {
+  transform: translateY(-1px);
   color: var(--app-primary);
   border-color: #d7e7ea;
   background: #f7fbfb;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.el-button:not(.is-disabled):active {
+  transform: translateY(0);
 }
 
 .el-button.is-text,
@@ -74,12 +83,19 @@ body {
   --el-button-hover-border-color: var(--app-primary-strong);
   --el-button-active-bg-color: var(--app-primary-strong);
   --el-button-active-border-color: var(--app-primary-strong);
+  box-shadow: 0 10px 20px rgba(37, 111, 120, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.el-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(37, 111, 120, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .el-input__wrapper,
 .el-select__wrapper {
   border-radius: var(--app-radius-sm);
-  box-shadow: 0 0 0 1px #e5eaf1 inset;
+  box-shadow: 0 0 0 1px #e5eaf1 inset, inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .el-input__wrapper:hover,
@@ -90,12 +106,14 @@ body {
 .el-input__wrapper.is-focus,
 .el-select__wrapper.is-focused {
   box-shadow: 0 0 0 1px var(--app-primary) inset, 0 0 0 3px rgba(37, 111, 120, 0.08);
+  transform: translateY(-1px);
 }
 
 .el-card {
   --el-card-border-radius: var(--app-radius);
   border-color: var(--app-border);
   box-shadow: var(--app-shadow);
+  transform: translateZ(0);
 }
 
 .el-table {

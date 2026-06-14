@@ -316,6 +316,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  perspective: 1400px;
 }
 
 .detail-header {
@@ -358,7 +359,27 @@ onUnmounted(() => {
 .content-card {
   border: 1px solid #edf1f6;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--app-shadow-3d);
+  transform: translateZ(0);
+  position: relative;
+  overflow: hidden;
+}
+
+.summary-card::after,
+.content-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 28%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0));
+}
+
+.summary-card :deep(.el-card__body),
+.content-card :deep(.el-card__header),
+.content-card :deep(.el-card__body) {
+  position: relative;
+  z-index: 1;
 }
 
 .summary-card :deep(.el-card__body) {
@@ -389,6 +410,7 @@ onUnmounted(() => {
   border: 1px solid #edf1f6;
   border-radius: 12px;
   background: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 8px 18px rgba(15, 23, 42, 0.025);
 }
 
 .progress-title {

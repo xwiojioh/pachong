@@ -146,13 +146,15 @@ onUnmounted(() => {
 <style scoped>
 .layout-container {
   height: 100vh;
-  background: #f8fafc;
+  background:
+    linear-gradient(180deg, #fbfdff 0%, #f8fafc 42%, #f4f7fb 100%);
 }
 
 .layout-aside {
   background: #17212b;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 8px 0 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 14px 0 32px rgba(15, 23, 42, 0.12);
+  transform: translateZ(0);
 }
 
 .logo {
@@ -226,6 +228,7 @@ onUnmounted(() => {
   padding: 0 24px;
   height: 72px;
   backdrop-filter: blur(10px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.035);
 }
 
 .header-content {
@@ -282,6 +285,7 @@ onUnmounted(() => {
   background: transparent;
   padding: 28px;
   overflow-x: hidden;
+  perspective: 1400px;
 }
 
 :deep(.menu-drawer .el-drawer__body) {

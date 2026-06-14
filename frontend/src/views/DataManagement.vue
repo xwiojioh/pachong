@@ -201,6 +201,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  perspective: 1400px;
 }
 
 .page-heading {
@@ -244,9 +245,11 @@ onMounted(() => {
   border: 1px solid #edf1f6;
   border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--app-shadow-3d);
   position: relative;
   overflow: hidden;
+  transform: translateZ(0);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
 .summary-card::before {
@@ -255,6 +258,25 @@ onMounted(() => {
   inset: 0 auto 0 0;
   width: 4px;
   background: #1e6f7a;
+}
+
+.summary-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 42%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0));
+}
+
+.summary-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px) rotateX(1.2deg);
+  box-shadow: var(--app-shadow-3d-hover);
 }
 
 .summary-card.is-success::before {
@@ -288,7 +310,8 @@ onMounted(() => {
 .page-card {
   border: 1px solid #edf1f6;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--app-shadow-3d);
+  transform: translateZ(0);
 }
 
 .table-card :deep(.el-card__body) {
@@ -305,6 +328,7 @@ onMounted(() => {
   border: 1px solid #edf1f6;
   border-radius: 12px;
   background: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 8px 18px rgba(15, 23, 42, 0.025);
 }
 
 .toolbar-left {

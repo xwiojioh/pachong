@@ -338,6 +338,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  perspective: 1400px;
 }
 
 .page-heading {
@@ -376,7 +377,8 @@ onUnmounted(() => {
   border: 1px solid #edf1f6;
   border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--app-shadow-3d);
+  transform: translateZ(0);
 }
 
 .stat-card {
@@ -384,6 +386,7 @@ onUnmounted(() => {
   padding: 22px;
   position: relative;
   overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
 .stat-card::before {
@@ -392,6 +395,39 @@ onUnmounted(() => {
   inset: 0 auto 0 0;
   width: 4px;
   background: #1e6f7a;
+}
+
+.stat-card::after,
+.chart-card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 42%;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0));
+}
+
+.stat-card > *,
+.chart-card :deep(.el-card__header),
+.chart-card :deep(.el-card__body) {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px) rotateX(1.2deg);
+  box-shadow: var(--app-shadow-3d-hover);
+}
+
+.chart-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.chart-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--app-shadow-3d-hover);
 }
 
 .stat-card.is-success::before {

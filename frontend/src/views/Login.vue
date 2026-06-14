@@ -136,8 +136,10 @@ const handleRegister = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #f8fafc;
+  background:
+    linear-gradient(180deg, #fbfdff 0%, #f8fafc 48%, #f4f7fb 100%);
   padding: 16px;
+  perspective: 1200px;
 }
 
 .brand-mark {
@@ -157,7 +159,14 @@ const handleRegister = async () => {
   width: min(420px, calc(100vw - 32px));
   border: 1px solid #edf1f6;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03), 0 1px 3px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--app-shadow-3d);
+  transform: translateZ(0);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.login-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--app-shadow-3d-hover);
 }
 
 .login-card :deep(.el-card__body) {
