@@ -140,6 +140,7 @@ def ensure_database_schema():
             _ensure_column(cursor, 'tasks', 'last_error', "ALTER TABLE tasks ADD COLUMN last_error TEXT NULL AFTER stop_requested")
             _ensure_column(cursor, 'tasks', 'last_run_at', "ALTER TABLE tasks ADD COLUMN last_run_at DATETIME NULL AFTER last_error")
             _ensure_column(cursor, 'tasks', 'finished_at', "ALTER TABLE tasks ADD COLUMN finished_at DATETIME NULL AFTER last_run_at")
+            _ensure_column(cursor, 'tasks', 'last_run_result', "ALTER TABLE tasks ADD COLUMN last_run_result JSON NULL AFTER finished_at")
 
             _ensure_index(cursor, 'tasks', 'idx_user_id', "CREATE INDEX idx_user_id ON tasks (user_id)")
             _ensure_index(cursor, 'tasks', 'idx_status', "CREATE INDEX idx_status ON tasks (status)")

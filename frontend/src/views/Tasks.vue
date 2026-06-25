@@ -148,7 +148,84 @@
               />
             </el-form-item>
           </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="再次运行策略">
+              <el-select v-model="createForm.onRunPolicy" style="width: 100%">
+                <el-option label="追加数据" value="append" />
+                <el-option label="去重后追加" value="dedup_append" />
+                <el-option label="覆盖旧数据" value="replace" />
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
+
+        <el-form-item label="批量 URL">
+          <el-input
+            v-model="createForm.extraUrls"
+            type="textarea"
+            :rows="3"
+            placeholder="可选。每行一个 URL，会与上方目标 URL 一起批量采集。"
+          />
+        </el-form-item>
+
+        <div class="feature-panel">
+          <div class="feature-panel-title">翻页采集</div>
+          <el-switch v-model="createForm.paginationEnabled" active-text="启用翻页" />
+          <div v-if="createForm.paginationEnabled" class="feature-panel-body">
+            <el-row :gutter="16">
+              <el-col :xs="24" :md="12">
+                <el-form-item label="翻页模式">
+                  <el-select v-model="createForm.paginationMode" style="width: 100%">
+                    <el-option label="下一页链接" value="next_link" />
+                    <el-option label="URL 模板" value="url_template" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="最多页数">
+                  <el-input-number v-model="createForm.paginationMaxPages" :min="1" :max="50" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item v-if="createForm.paginationMode === 'next_link'" label="下一页选择器">
+              <el-input
+                v-model="createForm.paginationNextSelector"
+                placeholder="CSS 或 XPath，例如：.next a 或 //a[contains(text(),'下一页')]"
+              />
+            </el-form-item>
+            <template v-else>
+              <el-form-item label="URL 模板">
+                <el-input
+                  v-model="createForm.paginationUrlTemplate"
+                  placeholder="例如：https://movie.douban.com/top250?start={page}"
+                />
+              </el-form-item>
+              <el-row :gutter="16">
+                <el-col :xs="24" :md="12">
+                  <el-form-item label="起始页值">
+                    <el-input-number v-model="createForm.paginationStartPage" :min="0" :max="9999" style="width: 100%" />
+                  </el-form-item>
+                </el-col>
+                <el-col :xs="24" :md="12">
+                  <el-form-item label="页码步长">
+                    <el-input-number v-model="createForm.paginationPageStep" :min="1" :max="9999" style="width: 100%" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </template>
+          </div>
+        </div>
+
+        <div class="feature-panel">
+          <div class="feature-panel-title">数据去重与清洗</div>
+          <el-checkbox v-model="createForm.dedupByUrl">按 URL 去重</el-checkbox>
+          <el-checkbox v-model="createForm.dedupByTitle">按标题去重</el-checkbox>
+          <div class="feature-panel-body">
+            <el-checkbox v-model="createForm.cleanTrim">去除首尾空格</el-checkbox>
+            <el-checkbox v-model="createForm.cleanWhitespace">合并多余空白</el-checkbox>
+            <el-checkbox v-model="createForm.cleanNormalizeUrl">标准化链接</el-checkbox>
+          </div>
+        </div>
 
         <div class="detect-card" v-loading="detectionLoading">
           <div class="detect-header">
@@ -552,7 +629,21 @@ const createForm = reactive({
   detailWaitForSelector: '',
   detailWaitForTimeoutMs: 0,
   detailEmulateMobile: false,
-  detailFields: [createDetailField('title'), createDetailField('content')]
+  detailFields: [createDetailField('title'), createDetailField('content')],
+  extraUrls: '',
+  onRunPolicy: 'dedup_append',
+  dedupByUrl: true,
+  dedupByTitle: false,
+  cleanTrim: true,
+  cleanWhitespace: true,
+  cleanNormalizeUrl: false,
+  paginationEnabled: false,
+  paginationMode: 'next_link',
+  paginationNextSelector: '',
+  paginationMaxPages: 5,
+  paginationUrlTemplate: '',
+  paginationStartPage: 0,
+  paginationPageStep: 25
 })
 
 const createRules = {
@@ -750,6 +841,68 @@ const parseRequestBody = () => {
   return JSON.parse(createForm.body)
 }
 
+const buildExtraUrlList = () => {
+  return createForm.extraUrls
+    .split('\n')
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+const buildDataPolicy = () => {
+  const dedupKeys = []
+  if (createForm.dedupByUrl) dedupKeys.push('url')
+  if (createForm.dedupByTitle) dedupKeys.push('title')
+
+  const clean = []
+  if (createForm.cleanTrim) clean.push('trim')
+  if (createForm.cleanWhitespace) clean.push('collapse_whitespace')
+  if (createForm.cleanNormalizeUrl) clean.push('normalize_url')
+
+  return {
+    on_run: createForm.onRunPolicy,
+    dedup_keys: dedupKeys.length ? dedupKeys : ['url'],
+    clean: clean.length ? clean : ['trim', 'collapse_whitespace']
+  }
+}
+
+const buildPagination = () => {
+  if (!createForm.paginationEnabled) {
+    return null
+  }
+
+  const pagination = {
+    enabled: true,
+    mode: createForm.paginationMode,
+    max_pages: createForm.paginationMaxPages
+  }
+
+  if (createForm.paginationMode === 'next_link') {
+    pagination.next_selector = createForm.paginationNextSelector.trim()
+    pagination.next_selector_type = createForm.paginationNextSelector.trim().startsWith('/')
+      ? 'xpath'
+      : 'css'
+  } else {
+    pagination.url_template = createForm.paginationUrlTemplate.trim() || createForm.url.trim()
+    pagination.start_page = createForm.paginationStartPage
+    pagination.page_step = createForm.paginationPageStep
+  }
+
+  return pagination
+}
+
+const appendCreateExtras = (payload) => {
+  const extraUrls = buildExtraUrlList()
+  if (extraUrls.length) {
+    payload.urls = extraUrls
+  }
+  payload.data_policy = buildDataPolicy()
+  const pagination = buildPagination()
+  if (pagination) {
+    payload.pagination = pagination
+  }
+  return payload
+}
+
 const resetCreateForm = () => {
   Object.assign(createForm, {
     name: '',
@@ -778,7 +931,21 @@ const resetCreateForm = () => {
     detailWaitForSelector: '',
     detailWaitForTimeoutMs: 0,
     detailEmulateMobile: false,
-    detailFields: [createDetailField('title'), createDetailField('content')]
+    detailFields: [createDetailField('title'), createDetailField('content')],
+    extraUrls: '',
+    onRunPolicy: 'dedup_append',
+    dedupByUrl: true,
+    dedupByTitle: false,
+    cleanTrim: true,
+    cleanWhitespace: true,
+    cleanNormalizeUrl: false,
+    paginationEnabled: false,
+    paginationMode: 'next_link',
+    paginationNextSelector: '',
+    paginationMaxPages: 5,
+    paginationUrlTemplate: '',
+    paginationStartPage: 0,
+    paginationPageStep: 25
   })
   advancedMode.value = false
   detectedPreset.value = createEmptyPreset()
@@ -925,12 +1092,25 @@ const handleCreate = async () => {
       return
     }
 
+    if (createForm.paginationEnabled && createForm.paginationMode === 'next_link' && !createForm.paginationNextSelector.trim()) {
+      ElMessage.error('已启用翻页采集，请填写下一页选择器')
+      return
+    }
+    if (
+      createForm.paginationEnabled &&
+      createForm.paginationMode === 'url_template' &&
+      !(createForm.paginationUrlTemplate.trim() || createForm.url.trim()).includes('{page}')
+    ) {
+      ElMessage.error('URL 模板模式需要包含 {page} 占位符')
+      return
+    }
+
     createLoading.value = true
-    const payload = {
+    const payload = appendCreateExtras({
       name: createForm.name.trim(),
       url: createForm.url.trim(),
       max_items: createForm.fetchLimit
-    }
+    })
 
     if (advancedMode.value) {
       const fields = buildValidFields()
@@ -1313,6 +1493,24 @@ onUnmounted(() => {
   border-radius: 12px;
   background: #f8fafc;
   border: 1px solid #edf1f6;
+}
+
+.feature-panel {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #edf1f6;
+  background: #fcfdff;
+}
+
+.feature-panel-title {
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #344054;
+}
+
+.feature-panel-body {
+  margin-top: 12px;
 }
 
 .detect-header {

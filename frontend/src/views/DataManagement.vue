@@ -62,6 +62,8 @@
           </el-select>
           <el-button @click="searchData">搜索</el-button>
           <el-button @click="resetFilters">重置</el-button>
+          <el-button type="warning" plain @click="handleDeduplicate">去重</el-button>
+          <el-button type="info" plain @click="handleClean">清洗</el-button>
         </div>
       </div>
 
@@ -171,6 +173,46 @@ const handleExport = (format) => {
     keyword: filters.keyword,
     task_id: filters.taskId
   })
+}
+
+const handleDeduplicate = async () => {
+  try {
+    await ElMessageBox.confirm('将按 URL 删除重复数据，保留最新一条。', '数据去重', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await dataApi.deduplicateData({
+      task_id: filters.taskId || undefined,
+      keys: ['url']
+    })
+    ElMessage.success(res.message || '去重完成')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
+const handleClean = async () => {
+  try {
+    await ElMessageBox.confirm('将清理数据中的多余空格，并标准化链接格式。', '数据清洗', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+    const res = await dataApi.cleanData({
+      task_id: filters.taskId || undefined,
+      rules: ['trim', 'collapse_whitespace', 'normalize_url']
+    })
+    ElMessage.success(res.message || '清洗完成')
+    fetchData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
 }
 
 const deleteDataRow = async (dataId) => {

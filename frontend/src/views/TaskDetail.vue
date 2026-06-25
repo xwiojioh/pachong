@@ -12,6 +12,8 @@
       <div class="header-actions">
         <el-button plain :disabled="task?.status === 'running'" @click="runTask">运行任务</el-button>
         <el-button plain :disabled="task?.status !== 'running'" @click="stopTask">停止任务</el-button>
+        <el-button plain @click="handleDeduplicate">去重</el-button>
+        <el-button plain @click="handleClean">清洗</el-button>
         <el-dropdown @command="handleExport">
           <el-button plain>
             导出数据
@@ -38,6 +40,16 @@
         class="error-alert"
       />
 
+      <el-alert
+        v-if="task?.last_run_result?.warning"
+        title="采集结果提示"
+        :type="task?.last_run_result?.shortfall ? 'warning' : 'info'"
+        :description="runResultDescription"
+        show-icon
+        :closable="false"
+        class="error-alert"
+      />
+
       <el-descriptions :column="2" border>
         <el-descriptions-item label="任务 ID">{{ task?.id }}</el-descriptions-item>
         <el-descriptions-item label="任务状态">
@@ -47,8 +59,19 @@
         </el-descriptions-item>
         <el-descriptions-item label="请求方式">{{ task?.request_config?.method || 'GET' }}</el-descriptions-item>
         <el-descriptions-item label="数据总量">{{ task?.data_count || 0 }}</el-descriptions-item>
+        <el-descriptions-item label="预期条数">{{ task?.last_run_result?.expected || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="上次保存">{{ task?.last_run_result?.actual ?? '-' }}</el-descriptions-item>
         <el-descriptions-item label="目标 URL" :span="2">
           <el-link :href="task?.url" target="_blank" type="primary">{{ task?.url }}</el-link>
+        </el-descriptions-item>
+        <el-descriptions-item
+          v-if="task?.selector_config?.urls?.length > 1"
+          label="批量 URL"
+          :span="2"
+        >
+          <div class="url-list">
+            <div v-for="item in task.selector_config.urls" :key="item">{{ item }}</div>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item label="最近开始时间">{{ task?.last_run_at || '-' }}</el-descriptions-item>
         <el-descriptions-item label="最近完成时间">{{ task?.finished_at || '-' }}</el-descriptions-item>
@@ -184,6 +207,21 @@ const refreshTimer = ref(null)
 
 const isRunning = computed(() => task.value?.status === 'running')
 
+const runResultDescription = computed(() => {
+  const result = task.value?.last_run_result || {}
+  const parts = []
+  if (result.warning) {
+    parts.push(result.warning)
+  }
+  if (result.expected) {
+    parts.push(`预期 ${result.expected} 条，解析 ${result.parsed ?? 0} 条，保存 ${result.actual ?? 0} 条`)
+  }
+  if (result.skipped_dedup) {
+    parts.push(`去重跳过 ${result.skipped_dedup} 条`)
+  }
+  return parts.join('；')
+})
+
 const getLogType = (level) => {
   const map = {
     info: 'info',
@@ -271,6 +309,42 @@ const handleExport = (format) => {
     format,
     keyword: keyword.value
   })
+}
+
+const handleDeduplicate = async () => {
+  try {
+    await ElMessageBox.confirm('将按 URL 删除本任务中的重复数据，保留最新一条。', '数据去重', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    const res = await taskApi.deduplicateTaskData(route.params.id, { keys: ['url'] })
+    ElMessage.success(res.message || '去重完成')
+    refreshPage()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
+const handleClean = async () => {
+  try {
+    await ElMessageBox.confirm('将清理本任务数据中的多余空格，并标准化链接格式。', '数据清洗', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+    const res = await taskApi.cleanTaskData(route.params.id, {
+      rules: ['trim', 'collapse_whitespace', 'normalize_url']
+    })
+    ElMessage.success(res.message || '清洗完成')
+    refreshPage()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
 }
 
 const searchData = () => {
@@ -402,6 +476,13 @@ onUnmounted(() => {
 
 .error-alert {
   margin-bottom: 16px;
+}
+
+.url-list {
+  display: grid;
+  gap: 6px;
+  word-break: break-all;
+  color: #344054;
 }
 
 .progress-wrapper {

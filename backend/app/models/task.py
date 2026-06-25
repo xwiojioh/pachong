@@ -28,6 +28,7 @@ def _normalize_task(task):
         return task
     task['selector_config'] = _load_json(task.get('selector_config'), {})
     task['request_config'] = _load_json(task.get('request_config'), {})
+    task['last_run_result'] = _load_json(task.get('last_run_result'), {})
     task['progress'] = int(task.get('progress') or 0)
     task['stop_requested'] = bool(task.get('stop_requested'))
     task['data_count'] = int(task.get('data_count') or 0)
@@ -115,6 +116,7 @@ class Task:
         last_error=_UNSET,
         last_run_at=_UNSET,
         finished_at=_UNSET,
+        last_run_result=_UNSET,
     ):
         updates = []
         params = []
@@ -137,6 +139,9 @@ class Task:
         if finished_at is not _UNSET:
             updates.append("finished_at = %s")
             params.append(finished_at)
+        if last_run_result is not _UNSET:
+            updates.append("last_run_result = %s")
+            params.append(_dump_json(last_run_result))
 
         if not updates:
             return 0
@@ -336,6 +341,174 @@ class CrawledData:
         """
         rows = db_manager.fetch_all(query, tuple(params))
         return [_normalize_data(row) for row in rows]
+
+    @staticmethod
+    def get_all_rows_by_task(task_id):
+        query = """
+            SELECT *
+            FROM data
+            WHERE task_id = %s
+            ORDER BY created_at DESC, id DESC
+        """
+        rows = db_manager.fetch_all(query, (task_id,))
+        return [_normalize_data(row) for row in rows]
+
+    @staticmethod
+    def get_existing_signatures(task_id, keys):
+        rows = CrawledData.get_all_rows_by_task(task_id)
+        signatures = set()
+        for row in rows:
+            from app.utils.data_cleaner import build_dedup_signature
+            signatures.add(build_dedup_signature(row, keys))
+        return signatures
+
+    @staticmethod
+    def deduplicate_task(task_id, keys=None):
+        from app.utils.data_cleaner import build_dedup_signature
+
+        keys = keys or ['url']
+        rows = CrawledData.get_all_rows_by_task(task_id)
+        seen = {}
+        duplicate_ids = []
+        for row in rows:
+            signature = build_dedup_signature(row, keys)
+            if not any(part for part in signature.split('||')):
+                continue
+            if signature in seen:
+                duplicate_ids.append(row['id'])
+            else:
+                seen[signature] = row['id']
+        removed = 0
+        for data_id in duplicate_ids:
+            query = "DELETE FROM data WHERE id = %s AND task_id = %s"
+            removed += db_manager.execute_query(query, (data_id, task_id))
+        return removed
+
+    @staticmethod
+    def deduplicate_by_user(user_id, task_id=None, keys=None):
+        from app.utils.data_cleaner import build_dedup_signature
+
+        keys = keys or ['url']
+        conditions = ["t.user_id = %s"]
+        params = [user_id]
+        if task_id:
+            conditions.append("d.task_id = %s")
+            params.append(task_id)
+        where_clause = " AND ".join(conditions)
+        query = f"""
+            SELECT d.*
+            FROM data d
+            INNER JOIN tasks t ON d.task_id = t.id
+            WHERE {where_clause}
+            ORDER BY d.created_at DESC, d.id DESC
+        """
+        rows = [_normalize_data(row) for row in db_manager.fetch_all(query, tuple(params))]
+        seen = {}
+        duplicate_ids = []
+        for row in rows:
+            signature = f"{row['task_id']}::{build_dedup_signature(row, keys)}"
+            if not any(part for part in build_dedup_signature(row, keys).split('||')):
+                continue
+            if signature in seen:
+                duplicate_ids.append(row['id'])
+            else:
+                seen[signature] = row['id']
+        removed = 0
+        for data_id in duplicate_ids:
+            query = """
+                DELETE d
+                FROM data d
+                INNER JOIN tasks t ON d.task_id = t.id
+                WHERE d.id = %s AND t.user_id = %s
+            """
+            removed += db_manager.execute_query(query, (data_id, user_id))
+        return removed
+
+    @staticmethod
+    def clean_task(task_id, rules=None):
+        from app.utils.data_cleaner import clean_item, normalize_clean_rules
+
+        rules = normalize_clean_rules(rules)
+        rows = CrawledData.get_all_rows_by_task(task_id)
+        updated = 0
+        for row in rows:
+            cleaned = clean_item(
+                {
+                    'title': row.get('title'),
+                    'content': row.get('content'),
+                    'url': row.get('url'),
+                    'extra': row.get('extra') or {},
+                },
+                rules,
+            )
+            query = """
+                UPDATE data
+                SET title = %s, content = %s, url = %s, extra = %s
+                WHERE id = %s AND task_id = %s
+            """
+            db_manager.execute_query(
+                query,
+                (
+                    cleaned.get('title'),
+                    cleaned.get('content'),
+                    cleaned.get('url'),
+                    _dump_json(cleaned.get('extra')),
+                    row['id'],
+                    task_id,
+                ),
+            )
+            updated += 1
+        return updated
+
+    @staticmethod
+    def clean_by_user(user_id, task_id=None, rules=None):
+        from app.utils.data_cleaner import clean_item, normalize_clean_rules
+
+        rules = normalize_clean_rules(rules)
+        conditions = ["t.user_id = %s"]
+        params = [user_id]
+        if task_id:
+            conditions.append("d.task_id = %s")
+            params.append(task_id)
+        where_clause = " AND ".join(conditions)
+        query = f"""
+            SELECT d.*
+            FROM data d
+            INNER JOIN tasks t ON d.task_id = t.id
+            WHERE {where_clause}
+            ORDER BY d.created_at DESC, d.id DESC
+        """
+        rows = [_normalize_data(row) for row in db_manager.fetch_all(query, tuple(params))]
+        updated = 0
+        for row in rows:
+            cleaned = clean_item(
+                {
+                    'title': row.get('title'),
+                    'content': row.get('content'),
+                    'url': row.get('url'),
+                    'extra': row.get('extra') or {},
+                },
+                rules,
+            )
+            query = """
+                UPDATE data d
+                INNER JOIN tasks t ON d.task_id = t.id
+                SET d.title = %s, d.content = %s, d.url = %s, d.extra = %s
+                WHERE d.id = %s AND t.user_id = %s
+            """
+            db_manager.execute_query(
+                query,
+                (
+                    cleaned.get('title'),
+                    cleaned.get('content'),
+                    cleaned.get('url'),
+                    _dump_json(cleaned.get('extra')),
+                    row['id'],
+                    user_id,
+                ),
+            )
+            updated += 1
+        return updated
 
     @staticmethod
     def delete_by_id(data_id, user_id):

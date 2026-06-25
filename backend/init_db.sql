@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     last_error TEXT NULL,
     last_run_at DATETIME NULL,
     finished_at DATETIME NULL,
+    last_run_result JSON NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_user_id (user_id),

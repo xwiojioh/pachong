@@ -10,7 +10,8 @@ from lxml import etree, html as lxml_html
 
 from app.models.task import CrawledData, Task, TaskLog
 from app.spider.browser_renderer import BrowserRenderer
-from app.utils.task_presets import merge_request_config
+from app.utils.data_cleaner import build_dedup_signature, clean_item, deduplicate_items
+from app.utils.task_presets import get_expected_item_count, merge_request_config
 
 
 class SimpleCrawler:
@@ -692,6 +693,244 @@ class SimpleCrawler:
         self.log('静态抓取没有匹配到数据，尝试动态渲染兜底')
         return self.fetch_with_browser(url, dynamic_config)
 
+    def resolve_task_urls(self, task):
+        config = task.get('selector_config') or {}
+        urls = []
+        primary = (task.get('url') or '').strip()
+        if primary:
+            urls.append(primary)
+        for item in config.get('urls') or []:
+            value = str(item or '').strip()
+            if value and value not in urls:
+                urls.append(value)
+        return urls or ([primary] if primary else [])
+
+    def get_data_policy(self, selector_config):
+        policy = (selector_config or {}).get('data_policy') or {}
+        return {
+            'on_run': policy.get('on_run') or 'append',
+            'dedup_keys': policy.get('dedup_keys') or ['url'],
+            'clean': policy.get('clean') or ['trim', 'collapse_whitespace'],
+        }
+
+    def prepare_data_storage(self, selector_config):
+        policy = self.get_data_policy(selector_config)
+        on_run = policy['on_run']
+        if on_run == 'replace':
+            CrawledData.delete_by_task(self.task_id)
+            self.log('已按策略清空本任务历史数据')
+            return set()
+        if on_run == 'dedup_append':
+            return CrawledData.get_existing_signatures(self.task_id, policy['dedup_keys'])
+        return set()
+
+    def find_next_page_url(self, html, current_url, pagination):
+        selector = (pagination.get('next_selector') or '').strip()
+        if not selector:
+            return None
+
+        selector_type = (pagination.get('next_selector_type') or 'css').lower()
+        context = self._build_context(html)
+        href = self._extract_field(
+            context,
+            {
+                'selector': selector,
+                'selector_type': selector_type,
+                'extract_type': 'attr',
+                'attr': pagination.get('next_attr') or 'href',
+            },
+        )
+        if not href:
+            href = self._extract_field(
+                context,
+                {
+                    'selector': selector,
+                    'selector_type': selector_type,
+                    'extract_type': 'text',
+                },
+            )
+        if not href:
+            return None
+        return self.resolve_item_url(current_url, href)
+
+    def build_template_page_urls(self, start_url, pagination):
+        template = (pagination.get('url_template') or '').strip() or start_url
+        if '{page}' not in template:
+            return [start_url]
+
+        start_page = int(pagination.get('start_page') or 1)
+        page_step = int(pagination.get('page_step') or 1)
+        max_pages = max(1, int(pagination.get('max_pages') or 5))
+        return [template.replace('{page}', str(start_page + index * page_step)) for index in range(max_pages)]
+
+    def crawl_page_content(self, page_url, request_config, selector_config):
+        page_payload = self.fetch(page_url, request_config)
+        if not page_payload:
+            return []
+
+        html = page_payload['html']
+        final_url = page_payload.get('final_url') or page_url
+        parsed_data = self.parse(html, selector_config)
+
+        if not parsed_data:
+            parsed_data = self.smart_crawl(html, final_url, request_config, selector_config)
+
+        fallback_payload = self.maybe_render_dynamic(page_url, request_config, parsed_data)
+        if fallback_payload:
+            html = fallback_payload['html']
+            final_url = fallback_payload.get('final_url') or page_url
+            parsed_data = self.parse(html, selector_config)
+            if not parsed_data:
+                parsed_data = self.smart_crawl(html, final_url, request_config, selector_config)
+
+        return self.crawl_detail_pages(final_url, request_config, parsed_data, selector_config)
+
+    def crawl_url_with_pagination(self, start_url, request_config, selector_config):
+        pagination = selector_config.get('pagination') or {}
+        if not pagination.get('enabled'):
+            return self.crawl_page_content(start_url, request_config, selector_config)
+
+        mode = (pagination.get('mode') or 'next_link').lower()
+        max_pages = max(1, int(pagination.get('max_pages') or 5))
+        all_items = []
+
+        if mode == 'url_template':
+            page_urls = self.build_template_page_urls(start_url, pagination)
+            total_pages = len(page_urls)
+            for index, page_url in enumerate(page_urls, start=1):
+                if self.should_stop():
+                    break
+                self.log(f'翻页采集第 {index}/{total_pages} 页: {page_url}')
+                items = self.crawl_page_content(page_url, request_config, selector_config)
+                all_items.extend(items or [])
+            return all_items
+
+        current_url = start_url
+        visited = set()
+        for page_index in range(1, max_pages + 1):
+            if self.should_stop():
+                break
+            if current_url in visited:
+                break
+            visited.add(current_url)
+            self.log(f'翻页采集第 {page_index}/{max_pages} 页: {current_url}')
+
+            page_payload = self.fetch(current_url, request_config)
+            if not page_payload:
+                break
+
+            html = page_payload['html']
+            final_url = page_payload.get('final_url') or current_url
+            parsed_data = self.parse(html, selector_config)
+            if not parsed_data:
+                parsed_data = self.smart_crawl(html, final_url, request_config, selector_config)
+
+            fallback_payload = self.maybe_render_dynamic(current_url, request_config, parsed_data)
+            if fallback_payload:
+                html = fallback_payload['html']
+                final_url = fallback_payload.get('final_url') or current_url
+                parsed_data = self.parse(html, selector_config)
+                if not parsed_data:
+                    parsed_data = self.smart_crawl(html, final_url, request_config, selector_config)
+
+            page_items = self.crawl_detail_pages(final_url, request_config, parsed_data, selector_config)
+            all_items.extend(page_items or [])
+
+            next_url = self.find_next_page_url(html, final_url, pagination)
+            if not next_url or next_url in visited:
+                break
+            current_url = next_url
+
+        return all_items
+
+    def save_items(self, parsed_data, selector_config, existing_signatures=None, base_url=''):
+        policy = self.get_data_policy(selector_config)
+        existing_signatures = existing_signatures or set()
+        saved = 0
+        skipped_dedup = 0
+        total = len(parsed_data)
+
+        for index, item in enumerate(parsed_data, start=1):
+            if self.should_stop():
+                progress = min(95, 30 + int(index / max(total, 1) * 60))
+                self.mark_stopped(progress)
+                return saved, skipped_dedup, True
+
+            cleaned = clean_item(item, policy['clean'])
+            if policy['on_run'] == 'dedup_append':
+                signature = build_dedup_signature(cleaned, policy['dedup_keys'])
+                if signature in existing_signatures:
+                    skipped_dedup += 1
+                    continue
+                existing_signatures.add(signature)
+
+            CrawledData.create(
+                task_id=self.task_id,
+                title=cleaned.get('title', ''),
+                content=cleaned.get('content', ''),
+                url=cleaned.get('url', '') or base_url,
+                extra={key: value for key, value in cleaned.items() if key not in ['title', 'content', 'url']},
+            )
+            saved += 1
+            progress = min(95, 30 + int(index / max(total, 1) * 60))
+            Task.update_runtime(self.task_id, progress=progress)
+
+        return saved, skipped_dedup, False
+
+    def build_run_result(self, expected_count, parsed_count, saved_count, skipped_dedup=0):
+        result = {
+            'expected': expected_count,
+            'parsed': parsed_count,
+            'actual': saved_count,
+            'skipped_dedup': skipped_dedup,
+            'shortfall': False,
+            'warning': '',
+        }
+        if expected_count and saved_count < expected_count:
+            result['shortfall'] = True
+            result['warning'] = (
+                f'预期最多抓取 {expected_count} 条，实际保存 {saved_count} 条，'
+                f'网站可爬内容不足或未匹配到足够数据'
+            )
+        if skipped_dedup:
+            dedup_hint = f'另有 {skipped_dedup} 条重复数据已跳过'
+            result['warning'] = f'{result["warning"]}；{dedup_hint}' if result['warning'] else dedup_hint
+        return result
+
+    def finalize_run(self, selector_config, parsed_data, saved_count, skipped_dedup, stopped=False):
+        expected_count = get_expected_item_count(selector_config)
+        parsed_count = len(parsed_data)
+        run_result = self.build_run_result(expected_count, parsed_count, saved_count, skipped_dedup)
+
+        if stopped:
+            return
+
+        if not parsed_data and saved_count == 0:
+            Task.update_runtime(
+                self.task_id,
+                status='completed',
+                progress=100,
+                stop_requested=False,
+                finished_at=datetime.now(),
+                last_error='',
+                last_run_result=run_result,
+            )
+            self.log('任务执行完成，但未匹配到数据', 'warning')
+            return
+
+        Task.update_runtime(
+            self.task_id,
+            status='completed',
+            progress=100,
+            stop_requested=False,
+            finished_at=datetime.now(),
+            last_error='',
+            last_run_result=run_result,
+        )
+        self.log(f'任务执行完成，成功保存 {saved_count} 条数据')
+        if run_result.get('warning'):
+            self.log(run_result['warning'], 'warning')
+
     def run(self):
         task = self.refresh_task()
         if not task:
@@ -706,6 +945,7 @@ class SimpleCrawler:
             last_error='',
             last_run_at=datetime.now(),
             finished_at=None,
+            last_run_result={},
         )
 
         try:
@@ -713,97 +953,57 @@ class SimpleCrawler:
                 self.mark_stopped(0)
                 return
 
-            Task.update_runtime(self.task_id, progress=10)
             request_config = task.get('request_config', {}) or {}
-            page_payload = self.fetch(task['url'], request_config)
-            if not page_payload:
+            selector_config = task.get('selector_config', {}) or {}
+            task_urls = self.resolve_task_urls(task)
+            if not task_urls:
                 Task.update_runtime(
                     self.task_id,
                     status='failed',
                     progress=10,
-                    last_error='页面请求失败',
+                    last_error='未配置可抓取 URL',
                     finished_at=datetime.now(),
                     stop_requested=False,
                 )
                 return
-            html = page_payload['html']
 
-            if self.should_stop():
-                self.mark_stopped(15)
-                return
+            existing_signatures = self.prepare_data_storage(selector_config)
+            policy = self.get_data_policy(selector_config)
+            all_parsed = []
 
-            Task.update_runtime(self.task_id, progress=30)
-            config = task.get('selector_config', {})
-            parsed_data = self.parse(html, config)
-
-            if not parsed_data:
-                parsed_data = self.smart_crawl(
-                    html,
-                    page_payload.get('final_url') or task['url'],
-                    request_config,
-                    config,
-                )
-
-            fallback_payload = self.maybe_render_dynamic(task['url'], request_config, parsed_data)
-            if fallback_payload:
-                html = fallback_payload['html']
-                parsed_data = self.parse(html, config)
-                if not parsed_data:
-                    parsed_data = self.smart_crawl(
-                        html,
-                        fallback_payload.get('final_url') or task['url'],
-                        request_config,
-                        config,
-                    )
-
-            parsed_data = self.crawl_detail_pages(
-                page_payload.get('final_url') or task['url'],
-                request_config,
-                parsed_data,
-                config,
-            )
-
-            parsed_data = self.apply_result_limit(parsed_data, config)
-
-            self.log(f'解析完成，共提取到 {len(parsed_data)} 条数据')
-            if not parsed_data:
-                Task.update_runtime(
-                    self.task_id,
-                    status='completed',
-                    progress=100,
-                    stop_requested=False,
-                    finished_at=datetime.now(),
-                    last_error='',
-                )
-                self.log('任务执行完成，但未匹配到数据', 'warning')
-                return
-
-            for index, item in enumerate(parsed_data, start=1):
+            Task.update_runtime(self.task_id, progress=10)
+            total_urls = len(task_urls)
+            for index, page_url in enumerate(task_urls, start=1):
                 if self.should_stop():
-                    progress = min(95, 30 + int(index / max(len(parsed_data), 1) * 60))
-                    self.mark_stopped(progress)
+                    self.mark_stopped(min(95, 10 + int(index / max(total_urls, 1) * 20)))
                     return
 
-                CrawledData.create(
-                    task_id=self.task_id,
-                    title=item.get('title', ''),
-                    content=item.get('content', ''),
-                    url=item.get('url', task['url']),
-                    extra={k: v for k, v in item.items() if k not in ['title', 'content', 'url']}
-                )
+                if total_urls > 1:
+                    self.log(f'批量采集第 {index}/{total_urls} 个 URL: {page_url}')
 
-                progress = min(95, 30 + int(index / len(parsed_data) * 60))
+                page_items = self.crawl_url_with_pagination(page_url, request_config, selector_config)
+                all_parsed.extend(page_items or [])
+                progress = min(30, 10 + int(index / max(total_urls, 1) * 20))
                 Task.update_runtime(self.task_id, progress=progress)
 
-            Task.update_runtime(
-                self.task_id,
-                status='completed',
-                progress=100,
-                stop_requested=False,
-                finished_at=datetime.now(),
-                last_error='',
+            if self.should_stop():
+                self.mark_stopped(30)
+                return
+
+            all_parsed = deduplicate_items(all_parsed, policy['dedup_keys'])
+            all_parsed = self.apply_result_limit(all_parsed, selector_config)
+            self.log(f'解析完成，共提取到 {len(all_parsed)} 条数据')
+
+            saved_count, skipped_dedup, stopped = self.save_items(
+                all_parsed,
+                selector_config,
+                existing_signatures=existing_signatures,
+                base_url=task.get('url', ''),
             )
-            self.log(f'任务执行完成，成功保存 {len(parsed_data)} 条数据')
+            if stopped:
+                return
+
+            self.finalize_run(selector_config, all_parsed, saved_count, skipped_dedup)
         except Exception as e:
             self.log(f"爬虫执行失败: {e}", 'error')
             Task.update_runtime(

@@ -505,3 +505,57 @@ def normalize_request_config_from_form(request_config):
         'headers': _pair_list_to_dict(config.get('headers')),
         'cookies': _pair_list_to_dict(config.get('cookies')),
     }
+
+
+def normalize_url_list(url, extra_urls=None):
+    urls = []
+    primary = (url or '').strip()
+    if primary:
+        urls.append(primary)
+
+    raw_items = extra_urls or []
+    if isinstance(raw_items, str):
+        raw_items = [line.strip() for line in raw_items.splitlines() if line.strip()]
+    for item in raw_items:
+        value = str(item or '').strip()
+        if value and value not in urls:
+            urls.append(value)
+    return urls
+
+
+def merge_selector_extras(selector_config, extras=None):
+    config = copy.deepcopy(selector_config or {})
+    extras = extras or {}
+
+    urls = extras.get('urls')
+    if urls:
+        config['urls'] = urls
+
+    pagination = extras.get('pagination')
+    if pagination:
+        config['pagination'] = pagination
+
+    data_policy = extras.get('data_policy')
+    if data_policy:
+        config['data_policy'] = data_policy
+
+    return config
+
+
+def get_expected_item_count(selector_config):
+    config = selector_config or {}
+    for key in ('result_limit', 'smart_max_items'):
+        value = config.get(key)
+        if value not in (None, ''):
+            try:
+                return max(1, int(value))
+            except (TypeError, ValueError):
+                pass
+
+    detail_page = config.get('detail_page') or {}
+    if detail_page.get('enabled') and detail_page.get('max_items') not in (None, ''):
+        try:
+            return max(1, int(detail_page.get('max_items')))
+        except (TypeError, ValueError):
+            pass
+    return None

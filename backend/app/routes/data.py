@@ -46,3 +46,25 @@ def delete_data(data_id):
 
     CrawledData.delete_by_id(data_id, user['user_id'])
     return jsonify({'code': 200, 'message': '删除成功'})
+
+
+@data_bp.route('/deduplicate', methods=['POST'])
+@login_required
+def deduplicate_data():
+    user = get_session_user()
+    payload = request.get_json() or {}
+    task_id = payload.get('task_id')
+    keys = payload.get('keys') or ['url']
+    removed = CrawledData.deduplicate_by_user(user['user_id'], task_id=task_id, keys=keys)
+    return jsonify({'code': 200, 'message': f'已删除 {removed} 条重复数据', 'data': {'removed': removed}})
+
+
+@data_bp.route('/clean', methods=['POST'])
+@login_required
+def clean_data():
+    user = get_session_user()
+    payload = request.get_json() or {}
+    task_id = payload.get('task_id')
+    rules = payload.get('rules')
+    updated = CrawledData.clean_by_user(user['user_id'], task_id=task_id, rules=rules)
+    return jsonify({'code': 200, 'message': f'已清洗 {updated} 条数据', 'data': {'updated': updated}})

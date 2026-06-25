@@ -105,6 +105,20 @@ export const taskApi = {
   },
   exportData(id, params = {}) {
     buildDownloadUrl(`/tasks/${id}/export`, params)
+  },
+  deduplicateTaskData(id, data = {}) {
+    return request({
+      url: `/tasks/${id}/data/deduplicate`,
+      method: 'post',
+      data
+    })
+  },
+  cleanTaskData(id, data = {}) {
+    return request({
+      url: `/tasks/${id}/data/clean`,
+      method: 'post',
+      data
+    })
   }
 }
 
@@ -124,6 +138,20 @@ export const dataApi = {
   },
   exportData(params = {}) {
     buildDownloadUrl('/data/export', params)
+  },
+  deduplicateData(data = {}) {
+    return request({
+      url: '/data/deduplicate',
+      method: 'post',
+      data
+    })
+  },
+  cleanData(data = {}) {
+    return request({
+      url: '/data/clean',
+      method: 'post',
+      data
+    })
   }
 }
 

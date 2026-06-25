@@ -8,8 +8,10 @@ from app.utils.task_presets import (
     apply_max_items_to_selector_config,
     detect_task_preset,
     merge_request_config,
+    merge_selector_extras,
     normalize_request_config_for_form,
     normalize_request_config_from_form,
+    normalize_url_list,
 )
 
 tasks_bp = Blueprint('tasks', __name__, url_prefix='/api/tasks')
@@ -63,6 +65,16 @@ def create_task():
         selector_config,
         max_items,
         override_detail_max=not has_manual_fields,
+    )
+
+    extra_urls = data.get('urls') or []
+    selector_config = merge_selector_extras(
+        selector_config,
+        {
+            'urls': normalize_url_list(url, extra_urls),
+            'pagination': data.get('pagination'),
+            'data_policy': data.get('data_policy'),
+        },
     )
 
     if not name:
@@ -183,3 +195,31 @@ def export_task_data(task_id):
     rows = CrawledData.export_by_user(user['user_id'], keyword=keyword, task_id=task_id)
     safe_name = task['name'].replace(' ', '_')
     return build_export_response(rows, export_format, f'{safe_name}_data')
+
+
+@tasks_bp.route('/<int:task_id>/data/deduplicate', methods=['POST'])
+@login_required
+def deduplicate_task_data(task_id):
+    user = get_session_user()
+    task = _get_owned_task(task_id, user['user_id'])
+    if not task:
+        return jsonify({'code': 404, 'message': '任务不存在'}), 404
+
+    payload = request.get_json() or {}
+    keys = payload.get('keys') or ['url']
+    removed = CrawledData.deduplicate_task(task_id, keys=keys)
+    return jsonify({'code': 200, 'message': f'已删除 {removed} 条重复数据', 'data': {'removed': removed}})
+
+
+@tasks_bp.route('/<int:task_id>/data/clean', methods=['POST'])
+@login_required
+def clean_task_data(task_id):
+    user = get_session_user()
+    task = _get_owned_task(task_id, user['user_id'])
+    if not task:
+        return jsonify({'code': 404, 'message': '任务不存在'}), 404
+
+    payload = request.get_json() or {}
+    rules = payload.get('rules')
+    updated = CrawledData.clean_task(task_id, rules=rules)
+    return jsonify({'code': 200, 'message': f'已清洗 {updated} 条数据', 'data': {'updated': updated}})
